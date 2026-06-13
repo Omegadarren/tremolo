@@ -68,7 +68,7 @@ private:
     static constexpr float       kZoomFactors[] = { 1.0f, 1.5f, 2.0f };
     static constexpr const char* kZoomLabels[]  = { "1x", "1.5x", "2x" };
     static constexpr int kBaseW = 860;
-    static constexpr int kBaseH = 590;
+    static constexpr int kBaseH = 630;
     juce::Rectangle<int> zoomButtonBounds;
 
     juce::TooltipWindow tooltipWindow { this, 700 };
