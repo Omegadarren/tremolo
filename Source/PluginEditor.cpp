@@ -472,14 +472,14 @@ void TremoloAudioProcessorEditor::resized()
         lc.shapeLabel   .setBounds (cx - 40,   BS + 16,  80, 12);
         lc.shapeCombo   .setBounds (cx - 40,   BS + 28,  80, 22);
 
-        lc.speedLabel   .setBounds (cx - half - 40, BS + 56,  kW, 12);
-        lc.speedSlider  .setBounds (cx - half - 40, BS + 68,  kW, 76);
+        lc.speedLabel   .setBounds (cx - 70, BS + 56,  kW, 12);
+        lc.speedSlider  .setBounds (cx - 70, BS + 68,  kW, 76);
 
-        lc.depthLabel   .setBounds (cx - half + 4,  BS + 56,  kW, 12);
-        lc.depthSlider  .setBounds (cx - half + 4,  BS + 68,  kW, 76);
+        lc.depthLabel   .setBounds (cx +  6, BS + 56,  kW, 12);
+        lc.depthSlider  .setBounds (cx +  6, BS + 68,  kW, 76);
 
-        lc.phaseLabel   .setBounds (cx - half - 40, BS + 152, kW, 12);
-        lc.phaseSlider  .setBounds (cx - half - 40, BS + 164, kW, 76);
+        lc.phaseLabel   .setBounds (cx - 32, BS + 152, kW, 12);
+        lc.phaseSlider  .setBounds (cx - 32, BS + 164, kW, 76);
     }
 
     // Global controls: bottom strip y=BS+258
