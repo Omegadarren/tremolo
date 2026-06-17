@@ -196,9 +196,19 @@ private:
         const int   mode       = (int)proc.apvts.getRawParameterValue ("mode")->load();
         const int   kN         = 256;
 
+        // Which LFOs are active per mode:
+        // Mono(0)/PingPong(1): centre only; DualTremolo(2): L+R; TriTremolo(3): all
+        const bool active[3] = {
+            mode == 2 || mode == 3,   // i=0  LEFT
+            mode == 0 || mode == 1 || mode == 3,  // i=1  CENTER
+            mode == 2 || mode == 3    // i=2  RIGHT
+        };
+
         // Per-LFO: draw waveform + animated playhead dot
         for (int i = 0; i < TremoloAudioProcessor::kNumLFOs; ++i)
         {
+            if (!active[i]) continue;
+
             int   sh    = (int)proc.apvts.getRawParameterValue ("shape" + juce::String (i))->load();
             float ph0   = proc.apvts.getRawParameterValue ("phase" + juce::String (i))->load() / 360.f;
             float depth = proc.apvts.getRawParameterValue ("depth" + juce::String (i))->load() * 0.01f;
