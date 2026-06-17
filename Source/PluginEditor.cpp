@@ -552,8 +552,8 @@ void TremoloAudioProcessorEditor::resized()
         }
     }
 
-    // Global controls: bottom strip y=BS+258
-    const int GY = BS + 258;
+    // Global controls: bottom strip — below pan/width knob (ends at BS+322)
+    const int GY = BS + 330;
     const int gcx = W / 2;
 
     mixSlider .setBounds (gcx - 130, GY, 64, 64);
