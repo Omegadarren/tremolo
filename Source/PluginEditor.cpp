@@ -699,6 +699,23 @@ void TremoloAudioProcessorEditor::paint (juce::Graphics& g)
             g.fillRoundedRectangle (cx2 + 4.f, (float)BS - 3.f, cw - 8.f, 3.f, 1.5f);
         }
 
+        // Disable overlay for inactive columns
+        const int mode = (int)processorRef.apvts.getRawParameterValue ("mode")->load();
+        const bool active[3] = {
+            mode == 2 || mode == 3,  // LEFT
+            mode == 0 || mode == 1 || mode == 3,  // CENTER
+            mode == 2 || mode == 3   // RIGHT
+        };
+        for (int i = 0; i < 3; ++i)
+        {
+            if (!active[i])
+            {
+                float cx2 = 8.f + i * cw;
+                g.setColour (juce::Colour (0, 0, 0).withAlpha (0.50f));
+                g.fillRoundedRectangle (cx2 + 4.f, (float)BS + 2.f, cw - 8.f, (float)(kBaseH - BS - 8), 5.f);
+            }
+        }
+
         // ── Global strip divider ─────────────────────────────────────────────
         const int GY = BS + 258;
         g.setColour (kDivider.withAlpha (0.22f));
