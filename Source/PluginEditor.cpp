@@ -575,8 +575,8 @@ void TremoloAudioProcessorEditor::resized()
         lc.depthLabel   .setBounds (cx + 12, BS + 56,  kW, 12);
         lc.depthSlider  .setBounds (cx + 12, BS + 68,  kW, 76);
 
-        lc.phaseLabel   .setBounds (cx - 32, BS + 152, kW, 12);
-        lc.phaseSlider  .setBounds (cx - 32, BS + 164, kW, 76);
+        lc.phaseLabel   .setBounds (cx - 76, BS + 152, kW, 12);
+        lc.phaseSlider  .setBounds (cx - 76, BS + 164, kW, 76);
 
         lc.gainSlider   .setBounds (cx - 76, BS + 246, kW, 64);
         lc.gainLabel    .setBounds (cx - 76, BS + 310, kW, 12);
