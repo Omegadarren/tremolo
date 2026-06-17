@@ -578,11 +578,11 @@ void TremoloAudioProcessorEditor::resized()
         lc.phaseLabel   .setBounds (cx - 32, BS + 152, kW, 12);
         lc.phaseSlider  .setBounds (cx - 32, BS + 164, kW, 76);
 
-        lc.gainSlider   .setBounds (cx - 76, BS + 164, kW, 64);
-        lc.gainLabel    .setBounds (cx - 76, BS + 228, kW, 12);
+        lc.gainSlider   .setBounds (cx - 90, BS + 164, kW, 64);
+        lc.gainLabel    .setBounds (cx - 90, BS + 228, kW, 12);
 
-        lc.mixSlider    .setBounds (cx + 12, BS + 164, kW, 64);
-        lc.mixLabel     .setBounds (cx + 12, BS + 228, kW, 12);
+        lc.mixSlider    .setBounds (cx + 26, BS + 164, kW, 64);
+        lc.mixLabel     .setBounds (cx + 26, BS + 228, kW, 12);
 
         // Pan (Mono) / Width (PingPong) knob in CENTER column only (i==1)
         if (i == 1)
@@ -594,8 +594,8 @@ void TremoloAudioProcessorEditor::resized()
         }
     }
 
-    // Global controls: bottom strip — below pan/width knob (ends at BS+322)
-    const int GY = BS + 330;
+    // Global controls: bottom strip
+    const int GY = BS + 300;
     const int gcx = W / 2;
 
     mixSlider .setBounds (gcx - 130, GY, 64, 64);
