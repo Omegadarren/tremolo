@@ -37,7 +37,19 @@ TremoloAudioProcessor::buildLayout()
     // Mode
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         "mode", "Mode",
-        juce::StringArray { "Mono", "Tri-Mono", "Ping Pong" }, 0));
+        juce::StringArray { "Mono", "Ping Pong", "Dual Tremolo", "Tri Tremolo" }, 0));
+
+    // Mono-mode pan: −100 (full left) to +100 (full right)
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pan", "Pan",
+        juce::NormalisableRange<float> (-100.f, 100.f, 1.f), 0.f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
+
+    // Ping-pong width: 0% = centred, 100% = full L↔R bounce
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "pingWidth", "Ping Width",
+        juce::NormalisableRange<float> (0.f, 100.f, 1.f), 100.f,
+        juce::AudioParameterFloatAttributes().withLabel ("%")));
 
     // Global
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -86,7 +98,7 @@ void TremoloAudioProcessor::prepareToPlay (double sr, int)
         shPrevPhase[i] = lfoPhase[i];
     }
 
-    // Crossover filter state
+    // Crossover filter state (no longer used but reset for safety)
     for (int c = 0; c < 2; ++c) xLP1[c] = xLP2[c] = xHP1[c] = xHP2[c] = 0.f;
 
     // Auto-gain: 300ms RMS, 600ms smoothing
@@ -167,12 +179,11 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         lfoPhaseInc[i] = speed[i] / sr;
     }
 
-    // For Tri-Mono crossover: 1-pole LP coefficients
-    auto lp1Coeff = [&](float fc) { return 1.f - std::exp (-2.f * juce::MathConstants<float>::pi * fc / sr); };
-    const float lpCoeffLow  = lp1Coeff (kLowCross);
-    const float lpCoeffHigh = lp1Coeff (kHighCross);
-
     float inSumSq = 0.f, outSumSq = 0.f, gainSum = 0.f;
+
+    // Per-mode extra params
+    const float panNorm   = apvts.getRawParameterValue ("pan")->load() / 100.f;  // −1..+1
+    const float pingWidth = apvts.getRawParameterValue ("pingWidth")->load() * 0.01f;
 
     for (int n = 0; n < N; ++n)
     {
@@ -203,37 +214,46 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // ── Mode processing ──────────────────────────────────────────────────────
         if (mode == (int)Mono)
         {
-            // All three LFOs multiply the same stereo signal in series
-            float g = gainLFO[0] * gainLFO[1] * gainLFO[2];
-            outL = inL * g;
-            outR = inR * g;
-            gainSum += g;
+            // LFO1 (CENTER) only. Pan knob weights how much each channel is modulated.
+            // panNorm = −1 → left only;  0 → both equal;  +1 → right only
+            float depthL = depth[1] * (1.f - juce::jmax (0.f, panNorm));  // reduces as pan goes right
+            float depthR = depth[1] * (1.f - juce::jmax (0.f, -panNorm)); // reduces as pan goes left
+            float modAmt = 1.f - lfoVal[1];  // how much cut the LFO produces (0..1)
+            float gL = 1.f - depthL * modAmt;
+            float gR = 1.f - depthR * modAmt;
+            outL = inL * gL;
+            outR = inR * gR;
+            gainSum += (gL + gR) * 0.5f;
         }
-        else if (mode == (int)TriMono)
+        else if (mode == (int)PingPong)
         {
-            // Split into 3 bands using 1-pole crossovers, modulate each band
-            // Low band: LP at kLowCross
-            // Mid band: HP at kLowCross, LP at kHighCross
-            // High band: HP at kHighCross
-
-            // Process left channel
-            auto processBands = [&](float x, float& lpL, float& lpH) -> float {
-                float low  = lpL + lpCoeffLow  * (x   - lpL); lpL = low;
-                float mid1 = lpH + lpCoeffHigh * (x   - lpH); lpH = mid1;
-                float high = x - mid1;
-                float mid  = mid1 - low;
-                return low * gainLFO[0] + mid * gainLFO[1] + high * gainLFO[2];
-            };
-            outL = processBands (inL, xLP1[0], xLP2[0]);
-            outR = processBands (inR, xLP1[1], xLP2[1]);
-            gainSum += (gainLFO[0] + gainLFO[1] + gainLFO[2]) / 3.f;
+            // LFO1 (CENTER) sweeps level between L and R.
+            // lfoVal=1 → all energy on L;  lfoVal=0 → all energy on R
+            // Width scales how far apart the two sides get.
+            float depthScaled = depth[1] * pingWidth;
+            float gL = 1.f - depthScaled * lfoVal[1];
+            float gR = 1.f - depthScaled * (1.f - lfoVal[1]);
+            outL = inL * gL;
+            outR = inR * gR;
+            gainSum += (gL + gR) * 0.5f;
         }
-        else // PingPong
+        else if (mode == (int)DualTremolo)
         {
-            // LFO-1 -> Left, LFO-2 -> Right, LFO-3 -> Center (both)
-            outL = inL * gainLFO[0] * gainLFO[2];
-            outR = inR * gainLFO[1] * gainLFO[2];
-            gainSum += (gainLFO[0] + gainLFO[1]) * 0.5f * gainLFO[2];
+            // LFO0 → Left only, LFO2 → Right only, LFO1 (CENTER) inactive.
+            float gL = gainLFO[0];
+            float gR = gainLFO[2];
+            outL = inL * gL;
+            outR = inR * gR;
+            gainSum += (gL + gR) * 0.5f;
+        }
+        else  // TriTremolo
+        {
+            // LFO0 → Left, LFO1 → both (centre layer), LFO2 → Right
+            float gL = gainLFO[0] * gainLFO[1];
+            float gR = gainLFO[2] * gainLFO[1];
+            outL = inL * gL;
+            outR = inR * gR;
+            gainSum += (gL + gR) * 0.5f;
         }
 
         // ── Mix + output gain ──────────────────────────────────────────────────

@@ -39,7 +39,7 @@ public:
     static constexpr int kWaveTableN  = 2048;
     static constexpr int kHistorySize = 512;
 
-    enum Mode { Mono = 0, TriMono, PingPong };
+    enum Mode { Mono = 0, PingPong = 1, DualTremolo = 2, TriTremolo = 3 };
 
     TremoloAudioProcessor();
     ~TremoloAudioProcessor() override = default;
@@ -96,14 +96,8 @@ private:
     float shValue[kNumLFOs]       = {};
     float shPrevPhase[kNumLFOs]   = {};
 
-    // ── Tri-Mono crossover filters (simple 1-pole LP/HP, stereo) ───────────────
-    // Band 0 (low):  LP at lowCross (250 Hz)
-    // Band 1 (mid):  HP at lowCross + LP at highCross (3500 Hz)
-    // Band 2 (high): HP at highCross
-    static constexpr float kLowCross  = 250.f;
-    static constexpr float kHighCross = 3500.f;
-    float xLP1[2]  = {}, xLP2[2]  = {};   // two LP stages (stereo)
-    float xHP1[2]  = {}, xHP2[2]  = {};   // two HP stages
+    // Crossover filter state (kept for legacy; unused in current modes)
+    float xLP1[2] = {}, xLP2[2] = {}, xHP1[2] = {}, xHP2[2] = {};
 
     // ── Auto-gain state ────────────────────────────────────────────────────────
     float rmsPowerIn       = 0.f;

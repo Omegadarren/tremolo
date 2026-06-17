@@ -62,7 +62,12 @@ private:
     std::unique_ptr<SliderAtt> mixAtt, gainAtt;
     using ButtonAtt = juce::AudioProcessorValueTreeState::ButtonAttachment;
     std::unique_ptr<ButtonAtt> autoGainAtt;
-
+    // ── Mode-dependent centre-column extras ───────────────────────────────
+    juce::Slider panSlider      { juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Label  panLabel;
+    juce::Slider pingWidthSlider { juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Label  pingWidthLabel;
+    std::unique_ptr<SliderAtt> panAtt, pingWidthAtt;
     // ── Zoom ──────────────────────────────────────────────────────────────────
     int zoomIndex = 0;
     static constexpr float       kZoomFactors[] = { 1.0f, 1.5f, 2.0f };

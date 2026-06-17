@@ -243,14 +243,19 @@ private:
         }
 
         // Channel / mode labels inside display
-        static const char* kPingLabels[] = { "L", "C", "R" };
-        static const char* kTriLabels[]  = { "LOW", "MID", "HIGH" };
+        static const char* kDualLabels[] = { "L",   "(off)", "R"   };
+        static const char* kTriLabels[]  = { "L",   "C",     "R"   };
+        static const char* kPPLabels[]   = { "(off)","C↔LR","(off)"};
+        static const char* kMonoLabels[] = { "(off)","C+PAN","(off)"};
+        const char** modeLabels = (mode == 0) ? kMonoLabels
+                                : (mode == 1) ? kPPLabels
+                                : (mode == 2) ? kDualLabels : kTriLabels;
         for (int i = 0; i < TremoloAudioProcessor::kNumLFOs; ++i)
         {
-            const char* lbl = (mode == 2) ? kPingLabels[i] : (mode == 1) ? kTriLabels[i] : kChannelNames[i];
             g.setFont (juce::Font (8.f, juce::Font::bold));
-            g.setColour (kLFOCol[i].withAlpha (0.55f));
-            g.drawText (lbl, (int)(waveX + 3), (int)(waveY + 3 + i * 13), 36, 12,
+            float alpha = (modeLabels[i][0] == '(') ? 0.28f : 0.55f;
+            g.setColour (kLFOCol[i].withAlpha (alpha));
+            g.drawText (modeLabels[i], (int)(waveX + 3), (int)(waveY + 3 + i * 13), 48, 12,
                         juce::Justification::centredLeft, false);
         }
 
@@ -329,9 +334,11 @@ TremoloAudioProcessorEditor::TremoloAudioProcessorEditor (TremoloAudioProcessor&
     addAndMakeVisible (*lfoDisplay);
 
     // Mode combo
-    modeCombo.addItemList ({ "Mono", "Tri-Mono", "Ping Pong" }, 1);
-    modeCombo.setTooltip ("Mono: all LFOs on full mix | Tri-Mono: each LFO on a frequency band | "
-                          "Ping Pong: LFO1=Left, LFO2=Right, LFO3=Center");
+    modeCombo.addItemList ({ "Mono", "Ping Pong", "Dual Tremolo", "Tri Tremolo" }, 1);
+    modeCombo.setTooltip ("Mono: one LFO on both channels with pan control | "
+                          "Ping Pong: LFO sweeps between L and R | "
+                          "Dual Tremolo: independent LFOs on L and R | "
+                          "Tri Tremolo: all 3 LFOs independent (L / both / R)");
     addAndMakeVisible (modeCombo);
     modeAtt = std::make_unique<ComboAtt> (p.apvts, "mode", modeCombo);
 
@@ -425,6 +432,32 @@ TremoloAudioProcessorEditor::TremoloAudioProcessorEditor (TremoloAudioProcessor&
     addAndMakeVisible (autoGainToggle);
     autoGainAtt = std::make_unique<ButtonAtt> (p.apvts, "autoGain", autoGainToggle);
 
+    // Pan knob (Mono mode, shown in CENTER column)
+    panSlider.setTextValueSuffix (" %");
+    panSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 13);
+    panSlider.setTooltip ("Pan the tremolo effect: left channel gets more modulation when panned left, right channel when panned right");
+    panSlider.setColour (juce::Slider::rotarySliderFillColourId, kLFOCol[1]);
+    addAndMakeVisible (panSlider);
+    panLabel.setText ("PAN", juce::dontSendNotification);
+    panLabel.setFont (juce::Font (8.5f));
+    panLabel.setColour (juce::Label::textColourId, kTextDim);
+    panLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (panLabel);
+    panAtt = std::make_unique<SliderAtt> (p.apvts, "pan", panSlider);
+
+    // Ping Width knob (Ping Pong mode, shown in CENTER column)
+    pingWidthSlider.setTextValueSuffix (" %");
+    pingWidthSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 13);
+    pingWidthSlider.setTooltip ("Width of the ping-pong sweep: 0% = no L/R difference, 100% = full alternation");
+    pingWidthSlider.setColour (juce::Slider::rotarySliderFillColourId, kLFOCol[1]);
+    addAndMakeVisible (pingWidthSlider);
+    pingWidthLabel.setText ("WIDTH", juce::dontSendNotification);
+    pingWidthLabel.setFont (juce::Font (8.5f));
+    pingWidthLabel.setColour (juce::Label::textColourId, kTextDim);
+    pingWidthLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (pingWidthLabel);
+    pingWidthAtt = std::make_unique<SliderAtt> (p.apvts, "pingWidth", pingWidthSlider);
+
     zoomIndex = p.editorZoomIndex;
     setSize (kBaseW, kBaseH);
     applyZoom();
@@ -441,7 +474,35 @@ TremoloAudioProcessorEditor::~TremoloAudioProcessorEditor()
 void TremoloAudioProcessorEditor::visibilityChanged()     { if (isVisible()) applyZoom(); }
 void TremoloAudioProcessorEditor::parentHierarchyChanged(){ applyZoom(); }
 void TremoloAudioProcessorEditor::applyZoom()             { if (getPeer()) setScaleFactor (kZoomFactors[zoomIndex]); }
-void TremoloAudioProcessorEditor::timerCallback()         { repaint(); }
+void TremoloAudioProcessorEditor::timerCallback()
+{
+    const int mode = (int)processorRef.apvts.getRawParameterValue ("mode")->load();
+
+    // Which LFO columns are active per mode
+    // LFO0=Left, LFO1=Center, LFO2=Right
+    bool active[3];
+    active[0] = (mode == 2 || mode == 3);  // Dual + Tri
+    active[1] = (mode == 0 || mode == 1 || mode == 3);  // Mono, PingPong, Tri
+    active[2] = (mode == 2 || mode == 3);  // Dual + Tri
+
+    for (int i = 0; i < kNumLFOs; ++i)
+    {
+        auto& lc = lfos[i];
+        lc.speedSlider .setEnabled (active[i]);
+        lc.depthSlider .setEnabled (active[i]);
+        lc.phaseSlider .setEnabled (active[i]);
+        lc.shapeCombo  .setEnabled (active[i]);
+        lc.channelLabel.setEnabled (active[i]);
+    }
+
+    // Show pan knob only in Mono mode; width only in Ping Pong
+    panSlider    .setVisible (mode == 0);
+    panLabel     .setVisible (mode == 0);
+    pingWidthSlider.setVisible (mode == 1);
+    pingWidthLabel .setVisible (mode == 1);
+
+    repaint();
+}
 
 //==============================================================================
 void TremoloAudioProcessorEditor::resized()
@@ -480,6 +541,15 @@ void TremoloAudioProcessorEditor::resized()
 
         lc.phaseLabel   .setBounds (cx - 32, BS + 152, kW, 12);
         lc.phaseSlider  .setBounds (cx - 32, BS + 164, kW, 76);
+
+        // Pan (Mono) / Width (PingPong) knob in CENTER column only (i==1)
+        if (i == 1)
+        {
+            panSlider       .setBounds (cx - 32, BS + 246, kW, 64);
+            panLabel        .setBounds (cx - 32, BS + 310, kW, 12);
+            pingWidthSlider .setBounds (cx - 32, BS + 246, kW, 64);
+            pingWidthLabel  .setBounds (cx - 32, BS + 310, kW, 12);
+        }
     }
 
     // Global controls: bottom strip y=BS+258
@@ -558,7 +628,7 @@ void TremoloAudioProcessorEditor::paint (juce::Graphics& g)
     // ── Version + Logo ───────────────────────────────────────────────────────
     g.setFont (juce::Font (8.5f));
     g.setColour (kTextDim.withAlpha (0.50f));
-    g.drawText ("v1.0", W - 52, 38, 40, 10, juce::Justification::centredRight, false);
+    g.drawText ("v1.1", W - 52, 38, 40, 10, juce::Justification::centredRight, false);
     drawLogoIcon (g, { (float)(W - 44), 6.f, 36.f, 36.f });
 
     // ── LFO column panels ─────────────────────────────────────────────────────
