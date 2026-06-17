@@ -43,6 +43,10 @@ private:
         juce::ComboBox   shapeCombo;
         juce::Label      shapeLabel;
         juce::Label      channelLabel;   // "LEFT" / "CENTER" / "RIGHT"
+        juce::Slider     gainSlider { juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow };
+        juce::Label      gainLabel;
+        juce::Slider     mixSlider { juce::Slider::RotaryVerticalDrag, juce::Slider::TextBoxBelow };
+        juce::Label      mixLabel;
     };
     std::array<LFOControls, kNumLFOs> lfos;
 
@@ -50,6 +54,8 @@ private:
     std::array<std::unique_ptr<SliderAtt>, kNumLFOs> speedAtts;
     std::array<std::unique_ptr<SliderAtt>, kNumLFOs> depthAtts;
     std::array<std::unique_ptr<SliderAtt>, kNumLFOs> phaseAtts;
+    std::array<std::unique_ptr<SliderAtt>, kNumLFOs> gainAtts;
+    std::array<std::unique_ptr<SliderAtt>, kNumLFOs> mixAtts;
     std::array<std::unique_ptr<ComboAtt>,  kNumLFOs> shapeAtts;
 
     // ── Global controls ────────────────────────────────────────────────────────
@@ -73,7 +79,7 @@ private:
     static constexpr float       kZoomFactors[] = { 1.0f, 1.5f, 2.0f };
     static constexpr const char* kZoomLabels[]  = { "1x", "1.5x", "2x" };
     static constexpr int kBaseW = 860;
-    static constexpr int kBaseH = 700;
+    static constexpr int kBaseH = 770;
     juce::Rectangle<int> zoomButtonBounds;
 
     juce::TooltipWindow tooltipWindow { this, 700 };

@@ -65,6 +65,20 @@ TremoloAudioProcessor::buildLayout()
     layout.add (std::make_unique<juce::AudioParameterBool> (
         "autoGain", "Auto Gain", false));
 
+    // Per-column gain and mix (L, C, R)
+    for (int i = 0; i < 3; ++i)
+    {
+        juce::String col = (i == 0) ? "L" : (i == 1) ? "C" : "R";
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            "gain" + col, "Gain " + col,
+            juce::NormalisableRange<float> (0.f, 100.f, 0.1f), 100.f,
+            juce::AudioParameterFloatAttributes().withLabel ("%")));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            "mix" + col, "Mix " + col,
+            juce::NormalisableRange<float> (0.f, 100.f, 0.1f), 100.f,
+            juce::AudioParameterFloatAttributes().withLabel ("%")));
+    }
+
     return layout;
 }
 
@@ -185,6 +199,18 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const float panNorm   = apvts.getRawParameterValue ("pan")->load() / 100.f;  // −1..+1
     const float pingWidth = apvts.getRawParameterValue ("pingWidth")->load() * 0.01f;
 
+    // Per-column gain and mix (0-100% → 0-1 linear)
+    const float gainCol[3] = {
+        apvts.getRawParameterValue ("gainL")->load() * 0.01f,
+        apvts.getRawParameterValue ("gainC")->load() * 0.01f,
+        apvts.getRawParameterValue ("gainR")->load() * 0.01f
+    };
+    const float mixCol[3] = {
+        apvts.getRawParameterValue ("mixL")->load() * 0.01f,
+        apvts.getRawParameterValue ("mixC")->load() * 0.01f,
+        apvts.getRawParameterValue ("mixR")->load() * 0.01f
+    };
+
     for (int n = 0; n < N; ++n)
     {
         // Read input
@@ -215,48 +241,58 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (mode == (int)Mono)
         {
             // LFO1 (CENTER) only. Pan knob weights how much each channel is modulated.
-            // panNorm = −1 → left only;  0 → both equal;  +1 → right only
-            float depthL = depth[1] * (1.f - juce::jmax (0.f, panNorm));  // reduces as pan goes right
-            float depthR = depth[1] * (1.f - juce::jmax (0.f, -panNorm)); // reduces as pan goes left
-            float modAmt = 1.f - lfoVal[1];  // how much cut the LFO produces (0..1)
+            float depthL = depth[1] * (1.f - juce::jmax (0.f, panNorm));
+            float depthR = depth[1] * (1.f - juce::jmax (0.f, -panNorm));
+            float modAmt = 1.f - lfoVal[1];
             float gL = 1.f - depthL * modAmt;
             float gR = 1.f - depthR * modAmt;
-            outL = inL * gL;
-            outR = inR * gR;
+            outL = inL * gL * gainCol[1];  // Apply col0 gain
+            outR = inR * gR * gainCol[1];
             gainSum += (gL + gR) * 0.5f;
+            // Apply col0 mix
+            outL = inL + (outL - inL) * mixCol[1];
+            outR = inR + (outR - inR) * mixCol[1];
         }
         else if (mode == (int)PingPong)
         {
             // LFO1 (CENTER) sweeps level between L and R.
-            // lfoVal=1 → all energy on L;  lfoVal=0 → all energy on R
-            // Width scales how far apart the two sides get.
             float depthScaled = depth[1] * pingWidth;
             float gL = 1.f - depthScaled * lfoVal[1];
             float gR = 1.f - depthScaled * (1.f - lfoVal[1]);
-            outL = inL * gL;
-            outR = inR * gR;
+            outL = inL * gL * gainCol[1];  // Apply col1 gain
+            outR = inR * gR * gainCol[1];
             gainSum += (gL + gR) * 0.5f;
+            // Apply col1 mix
+            outL = inL + (outL - inL) * mixCol[1];
+            outR = inR + (outR - inR) * mixCol[1];
         }
         else if (mode == (int)DualTremolo)
         {
             // LFO0 → Left only, LFO2 → Right only, LFO1 (CENTER) inactive.
             float gL = gainLFO[0];
             float gR = gainLFO[2];
-            outL = inL * gL;
-            outR = inR * gR;
+            float outL_wet = inL * gL * gainCol[0];  // Apply col0 gain
+            float outR_wet = inR * gR * gainCol[2];  // Apply col2 gain
             gainSum += (gL + gR) * 0.5f;
+            // Apply per-column mix
+            outL = inL + (outL_wet - inL) * mixCol[0];
+            outR = inR + (outR_wet - inR) * mixCol[2];
         }
         else  // TriTremolo
         {
             // LFO0 → Left, LFO1 → both (centre layer), LFO2 → Right
             float gL = gainLFO[0] * gainLFO[1];
             float gR = gainLFO[2] * gainLFO[1];
-            outL = inL * gL;
-            outR = inR * gR;
+            // Apply per-column gains
+            float outL_wet = inL * gL * gainCol[0] * gainCol[1];  // Left: col0 × col1
+            float outR_wet = inR * gR * gainCol[2] * gainCol[1];  // Right: col2 × col1
             gainSum += (gL + gR) * 0.5f;
+            // Apply per-column mixes (blend each column's contribution)
+            outL = inL + (outL_wet - inL) * mixCol[0] * mixCol[1];
+            outR = inR + (outR_wet - inR) * mixCol[2] * mixCol[1];
         }
 
-        // ── Mix + output gain ──────────────────────────────────────────────────
+        // ── Global mix + output gain ──────────────────────────────────────────────────
         outL = (inL + (outL - inL) * mixFrac) * outGainLin;
         outR = (inR + (outR - inR) * mixFrac) * outGainLin;
 

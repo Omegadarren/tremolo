@@ -413,6 +413,30 @@ TremoloAudioProcessorEditor::TremoloAudioProcessorEditor (TremoloAudioProcessor&
         lc.shapeLabel.setJustificationType (juce::Justification::centred);
         addAndMakeVisible (lc.shapeLabel);
         shapeAtts[i] = std::make_unique<ComboAtt> (p.apvts, "shape" + si, lc.shapeCombo);
+
+        // Per-column Gain
+        lc.gainSlider.setTextValueSuffix (" %");
+        lc.gainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 13);
+        lc.gainSlider.setTooltip ("Gain for " + juce::String (kChannelNames[i]) + " column (0-100%)");
+        lc.gainSlider.setColour (juce::Slider::rotarySliderFillColourId, col.withAlpha (0.75f));
+        addAndMakeVisible (lc.gainSlider);
+        lc.gainLabel.setText ("GAIN", juce::dontSendNotification);
+        lc.gainLabel.setFont (juce::Font (8.5f)); lc.gainLabel.setColour (juce::Label::textColourId, kTextDim);
+        lc.gainLabel.setJustificationType (juce::Justification::centred);
+        addAndMakeVisible (lc.gainLabel);
+        gainAtts[i] = std::make_unique<SliderAtt> (p.apvts, "gain" + juce::String (i == 0 ? "L" : i == 1 ? "C" : "R"), lc.gainSlider);
+
+        // Per-column Mix
+        lc.mixSlider.setTextValueSuffix (" %");
+        lc.mixSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 13);
+        lc.mixSlider.setTooltip ("Wet/Dry mix for " + juce::String (kChannelNames[i]) + " column (0-100%)");
+        lc.mixSlider.setColour (juce::Slider::rotarySliderFillColourId, col.withAlpha (0.5f));
+        addAndMakeVisible (lc.mixSlider);
+        lc.mixLabel.setText ("MIX", juce::dontSendNotification);
+        lc.mixLabel.setFont (juce::Font (8.5f)); lc.mixLabel.setColour (juce::Label::textColourId, kTextDim);
+        lc.mixLabel.setJustificationType (juce::Justification::centred);
+        addAndMakeVisible (lc.mixLabel);
+        mixAtts[i] = std::make_unique<SliderAtt> (p.apvts, "mix" + juce::String (i == 0 ? "L" : i == 1 ? "C" : "R"), lc.mixSlider);
     }
 
     // Global controls
@@ -503,6 +527,8 @@ void TremoloAudioProcessorEditor::timerCallback()
         lc.phaseSlider .setEnabled (active[i]);
         lc.shapeCombo  .setEnabled (active[i]);
         lc.channelLabel.setEnabled (active[i]);
+        lc.gainSlider  .setEnabled (active[i]);
+        lc.mixSlider   .setEnabled (active[i]);
     }
 
     // Show pan knob only in Mono mode; width only in Ping Pong
@@ -551,6 +577,12 @@ void TremoloAudioProcessorEditor::resized()
 
         lc.phaseLabel   .setBounds (cx - 32, BS + 152, kW, 12);
         lc.phaseSlider  .setBounds (cx - 32, BS + 164, kW, 76);
+
+        lc.gainLabel    .setBounds (cx - 76, BS + 248, kW, 12);
+        lc.gainSlider   .setBounds (cx - 76, BS + 260, kW, 64);
+
+        lc.mixLabel     .setBounds (cx + 12, BS + 248, kW, 12);
+        lc.mixSlider    .setBounds (cx + 12, BS + 260, kW, 64);
 
         // Pan (Mono) / Width (PingPong) knob in CENTER column only (i==1)
         if (i == 1)
