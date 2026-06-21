@@ -135,6 +135,7 @@ private:
             case 3: return p;
             case 4: return 1.f - p;
             case 5: return 0.5f;   // S&H shown as flat for display
+            case 6: return 1.f;     // Line shown as flat at full level
             default: return 0.5f;
         }
     }
@@ -353,7 +354,7 @@ TremoloAudioProcessorEditor::TremoloAudioProcessorEditor (TremoloAudioProcessor&
     modeAtt = std::make_unique<ComboAtt> (p.apvts, "mode", modeCombo);
 
     // Per-LFO controls
-    static const char* kShapes[] = { "Sine", "Triangle", "Square", "Saw Up", "Saw Down", "S&H" };
+    static const char* kShapes[] = { "Sine", "Triangle", "Square", "Saw Up", "Saw Down", "S&H", "Line" };
 
     for (int i = 0; i < kNumLFOs; ++i)
     {
@@ -405,7 +406,7 @@ TremoloAudioProcessorEditor::TremoloAudioProcessorEditor (TremoloAudioProcessor&
         phaseAtts[i] = std::make_unique<SliderAtt> (p.apvts, "phase" + si, lc.phaseSlider);
 
         // Shape
-        for (int s = 0; s < 6; ++s) lc.shapeCombo.addItem (kShapes[s], s + 1);
+        for (int s = 0; s < 7; ++s) lc.shapeCombo.addItem (kShapes[s], s + 1);
         lc.shapeCombo.setTooltip ("LFO " + si + " waveform shape");
         addAndMakeVisible (lc.shapeCombo);
         lc.shapeLabel.setText ("SHAPE", juce::dontSendNotification);

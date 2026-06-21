@@ -16,7 +16,7 @@
  *   Ping-Pong  - LFO-1 drives Left, LFO-2 drives Right, LFO-3 drives the
  *                centre (both) with the LFO-1/2 offset 90 degrees.
  *
- * LFO shapes: Sine, Triangle, Square, Saw-Up, Saw-Down, S&H (random).
+ * LFO shapes: Sine, Triangle, Square, Saw-Up, Saw-Down, S&H (random), Line.
  *
  * Per-channel:  speed (0.1–20 Hz), intensity (0–100%),
  *               phase offset (0–360 degrees), shape selector.
@@ -109,7 +109,7 @@ private:
     float outRmsSmooth     = 0.f;
 
     // ── LFO evaluation ─────────────────────────────────────────────────────────
-    // shape: 0=Sine  1=Triangle  2=Square  3=Saw-Up  4=Saw-Down  5=S&H
+    // shape: 0=Sine  1=Triangle  2=Square  3=Saw-Up  4=Saw-Down  5=S&H  6=Line
     float evalLFO (int lfoIdx, float phase, int shape) noexcept;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout buildLayout();

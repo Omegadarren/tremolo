@@ -30,7 +30,7 @@ TremoloAudioProcessor::buildLayout()
         layout.add (std::make_unique<juce::AudioParameterChoice> (
             "shape" + si, "LFO " + si + " Shape",
             juce::StringArray { "Sine", "Triangle", "Square", "Saw Up",
-                                "Saw Down", "S&H" },
+                                "Saw Down", "S&H", "Line" },
             0));
     }
 
@@ -163,6 +163,8 @@ float TremoloAudioProcessor::evalLFO (int idx, float phase, int shape) noexcept
             shPrevPhase[idx] = p;
             return 0.5f + 0.5f * (shValue[idx] * 2.f - 1.f);
         }
+        case 6: // Line — constant full level, phase-safe
+            return 1.f;
         default: return 0.5f;
     }
 }
