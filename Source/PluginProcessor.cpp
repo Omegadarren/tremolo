@@ -211,6 +211,14 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         apvts.getRawParameterValue ("mixR")->load() * 0.01f
     };
 
+    float columnGainDrive = 1.f;
+    if (mode == (int)Mono || mode == (int)PingPong)
+        columnGainDrive = gainCol[1];
+    else if (mode == (int)DualTremolo)
+        columnGainDrive = 0.5f * (gainCol[0] + gainCol[2]);
+    else
+        columnGainDrive = (gainCol[0] + gainCol[1] + gainCol[2]) / 3.f;
+
     for (int n = 0; n < N; ++n)
     {
         // Read input
@@ -304,6 +312,7 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             float rmsIn  = std::sqrt (juce::jmax (rmsPowerIn,  1.0e-10f));
             float rmsOut = std::sqrt (juce::jmax (rmsPowerOut, 1.0e-10f));
             float desired = juce::jlimit (1.f / 100.f, 100.f, rmsIn / rmsOut);
+            desired /= juce::jmax (columnGainDrive, 0.01f);
             autoGainSmooth = agCoeff * autoGainSmooth + (1.f - agCoeff) * desired;
             outL *= autoGainSmooth;
             outR *= autoGainSmooth;
