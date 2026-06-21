@@ -314,8 +314,19 @@ void TremoloAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             float desired = juce::jlimit (1.f / 100.f, 100.f, rmsIn / rmsOut);
             desired /= juce::jmax (columnGainDrive, 0.01f);
             autoGainSmooth = agCoeff * autoGainSmooth + (1.f - agCoeff) * desired;
-            outL *= autoGainSmooth;
-            outR *= autoGainSmooth;
+
+            if (mode == (int)DualTremolo)
+            {
+                if (mixCol[0] > 0.f)
+                    outL *= autoGainSmooth;
+                if (mixCol[2] > 0.f)
+                    outR *= autoGainSmooth;
+            }
+            else
+            {
+                outL *= autoGainSmooth;
+                outR *= autoGainSmooth;
+            }
         }
         else { autoGainSmooth = 1.f; }
 
