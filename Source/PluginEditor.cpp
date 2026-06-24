@@ -420,7 +420,20 @@ TremoloAudioProcessorEditor::~TremoloAudioProcessorEditor()
 }
 
 //==============================================================================
-void TremoloAudioProcessorEditor::visibilityChanged()     { if (isVisible()) applyZoom(); }
+void TremoloAudioProcessorEditor::visibilityChanged()
+{
+    if (isVisible())
+    {
+        applyZoom();
+        if (! centred)
+        {
+            centred = true;
+            if (auto* tlw = getTopLevelComponent(); tlw != this)
+                if (auto* d = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+                    tlw->setCentrePosition (d->userArea.getCentre());
+        }
+    }
+}
 void TremoloAudioProcessorEditor::parentHierarchyChanged(){ applyZoom(); }
 void TremoloAudioProcessorEditor::applyZoom()             { if (getPeer()) setScaleFactor (kZoomFactors[zoomIndex]); }
 void TremoloAudioProcessorEditor::timerCallback()

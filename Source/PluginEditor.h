@@ -77,6 +77,7 @@ private:
     std::unique_ptr<SliderAtt> panAtt, pingWidthAtt;
     // ── Zoom ──────────────────────────────────────────────────────────────────
     int zoomIndex = 0;
+    bool centred = false;
     static constexpr float       kZoomFactors[] = { 1.0f, 1.5f, 2.0f };
     static constexpr const char* kZoomLabels[]  = { "1x", "1.5x", "2x" };
     static constexpr int kBaseW = 860;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <JuceHeader.h>
 #include <array>
 #include <atomic>
@@ -68,7 +68,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
-    int editorZoomIndex = 0;
+    int editorZoomIndex = 1;
 
     // ── Thread-safe state for UI ───────────────────────────────────────────────
     std::atomic<float> inputLevelDb  { -120.f };
