@@ -1,117 +1,31 @@
-#include "PluginEditor.h"
+﻿#include "PluginEditor.h"
+#include "Ui/PlateLookAndFeel.h"
 
 constexpr float       TremoloAudioProcessorEditor::kZoomFactors[];
 constexpr const char* TremoloAudioProcessorEditor::kZoomLabels[];
 
 //==============================================================================
-//  Colour palette
+//  Colour palette  (warm-dark theme from PlateUi)
 //==============================================================================
-static const juce::Colour kBg       {  20,  21,  32 };
-static const juce::Colour kPanel    {  14,  15,  24 };
-static const juce::Colour kHeader   {  22,  54,  98 };
-static const juce::Colour kAccent   {  65, 145, 210 };
-static const juce::Colour kTextMain { 225, 238, 255 };
-static const juce::Colour kTextDim  { 115, 152, 195 };
-static const juce::Colour kDivider  {  48,  82, 124 };
+using T = PlateUi::Theme;
+static const juce::Colour kBg       = T::background();
+static const juce::Colour kPanel    = T::surface();
+static const juce::Colour kHeader   = T::surfaceRaised();
+static const juce::Colour kAccent   = T::accent();
+static const juce::Colour kTextMain = T::text();
+static const juce::Colour kTextDim  = T::textDim();
+static const juce::Colour kDivider  = T::border();
 
-// LFO colours: Left=cyan-blue, Center=gold, Right=warm-orange
+// LFO colours: Left=teal, Center=gold, Right=warm-amber
 static const juce::Colour kLFOCol[3] = {
-    juce::Colour ( 80, 185, 255),   // 0 – Left  (cyan-blue)
-    juce::Colour (220, 190,  55),   // 1 – Center (gold)
-    juce::Colour (255, 110,  80),   // 2 – Right  (warm orange)
+    juce::Colour (0xff52b8c8),   // 0 – Left  (teal)
+    juce::Colour (0xfff0b868),   // 1 – Center (gold)
+    juce::Colour (0xffe08040),   // 2 – Right  (warm amber)
 };
 static const char* kChannelNames[3] = { "LEFT", "CENTER", "RIGHT" };
 
-//==============================================================================
-//  Custom LookAndFeel
-//==============================================================================
-class TremoloLAF : public juce::LookAndFeel_V4
-{
-public:
-    TremoloLAF()
-    {
-        setColour (juce::Slider::thumbColourId,               kAccent);
-        setColour (juce::Slider::rotarySliderFillColourId,    kAccent);
-        setColour (juce::Slider::rotarySliderOutlineColourId, kDivider);
-        setColour (juce::Slider::textBoxTextColourId,         kTextDim);
-        setColour (juce::Slider::textBoxBackgroundColourId,   kPanel.darker (0.3f));
-        setColour (juce::Slider::textBoxOutlineColourId,      juce::Colours::transparentBlack);
-        setColour (juce::Slider::textBoxHighlightColourId,    kAccent.withAlpha (0.4f));
-        setColour (juce::Label::textColourId,                 kTextMain);
-        setColour (juce::Label::backgroundColourId,           juce::Colours::transparentBlack);
-        setColour (juce::ComboBox::textColourId,              kTextMain);
-        setColour (juce::ComboBox::backgroundColourId,        kPanel);
-        setColour (juce::ComboBox::outlineColourId,           kDivider);
-        setColour (juce::ComboBox::arrowColourId,             kTextDim);
-        setColour (juce::PopupMenu::backgroundColourId,       juce::Colour (14, 16, 26));
-        setColour (juce::PopupMenu::textColourId,             kTextMain);
-        setColour (juce::PopupMenu::highlightedBackgroundColourId, kAccent.withAlpha (0.28f));
-        setColour (juce::TextButton::buttonColourId,          kPanel);
-        setColour (juce::TextButton::buttonOnColourId,        kAccent.withAlpha (0.28f));
-        setColour (juce::TextButton::textColourOnId,          kTextMain);
-        setColour (juce::TextButton::textColourOffId,         kTextDim.withAlpha (0.55f));
-    }
-
-    void drawRotarySlider (juce::Graphics& g, int x, int y, int w, int h,
-                           float pos, float startA, float endA, juce::Slider& s) override
-    {
-        const float cx = x + w * 0.5f, cy = y + h * 0.5f;
-        const float r  = juce::jmin (w, h) * 0.5f - 4.f;
-
-        // Determine colour from slider colour ID (we tint per-LFO knobs)
-        juce::Colour fillCol = s.findColour (juce::Slider::rotarySliderFillColourId);
-
-        // Track
-        juce::Path arc;
-        arc.addCentredArc (cx, cy, r, r, 0.f, startA, endA, true);
-        g.setColour (kDivider.withAlpha (0.35f));
-        g.strokePath (arc, juce::PathStrokeType (2.5f, juce::PathStrokeType::curved,
-                                                  juce::PathStrokeType::rounded));
-        // Fill
-        float fe = startA + pos * (endA - startA);
-        juce::Path fill;
-        fill.addCentredArc (cx, cy, r, r, 0.f, startA, fe, true);
-        g.setColour (fillCol.withAlpha (0.80f));
-        g.strokePath (fill, juce::PathStrokeType (2.5f, juce::PathStrokeType::curved,
-                                                   juce::PathStrokeType::rounded));
-        // Metallic body
-        const float kr = r * 0.62f;
-        juce::ColourGradient grad (
-            juce::Colour (90, 98, 118), cx - kr * 0.4f, cy - kr * 0.5f,
-            juce::Colour (28, 30, 42),  cx + kr * 0.4f, cy + kr * 0.5f, false);
-        g.setGradientFill (grad); g.fillEllipse (cx-kr, cy-kr, kr*2, kr*2);
-        g.setColour (kDivider.withAlpha (0.5f)); g.drawEllipse (cx-kr, cy-kr, kr*2, kr*2, 1.f);
-        juce::ColourGradient rim (juce::Colours::white.withAlpha (0.18f), cx, cy-kr,
-                                   juce::Colours::transparentBlack, cx, cy+kr, false);
-        g.setGradientFill (rim); g.fillEllipse (cx-kr, cy-kr, kr*2, kr*2);
-        // Thumb
-        float a = startA + pos * (endA - startA);
-        g.setColour (kTextMain.withAlpha (0.9f));
-        g.drawLine (cx + (kr * 0.25f) * std::sin (a), cy - (kr * 0.25f) * std::cos (a),
-                    cx + (kr - 4.f)  * std::sin (a), cy - (kr - 4.f)  * std::cos (a), 1.8f);
-    }
-
-    void drawButtonBackground (juce::Graphics& g, juce::Button& b, const juce::Colour&,
-                                bool, bool) override
-    {
-        auto bounds = b.getLocalBounds().toFloat().reduced (0.5f);
-        g.setColour (b.getToggleState() ? kAccent.withAlpha (0.28f) : kPanel);
-        g.fillRoundedRectangle (bounds, 5.f);
-        g.setColour (b.getToggleState() ? kAccent : kDivider.withAlpha (0.55f));
-        g.drawRoundedRectangle (bounds.reduced (0.5f), 4.5f, 1.f);
-    }
-
-    void drawButtonText (juce::Graphics& g, juce::TextButton& b, bool, bool) override
-    {
-        g.setFont (juce::Font (10.f, juce::Font::bold));
-        g.setColour (b.getToggleState() ? kTextMain : kTextDim.withAlpha (0.6f));
-        g.drawText (b.getButtonText(), b.getLocalBounds(), juce::Justification::centred, false);
-    }
-
-    juce::Font getLabelFont (juce::Label&) override { return juce::Font (11.5f); }
-    juce::Font getComboBoxFont (juce::ComboBox&) override { return juce::Font (11.5f, juce::Font::bold); }
-    juce::Font getPopupMenuFont() override { return juce::Font (12.5f); }
-};
+// Use the shared warm-dark PlateLookAndFeel
+using TremoloLAF = PlateUi::PlateLookAndFeel;
 
 //==============================================================================
 //  LFO Waveform + Meter Display
@@ -625,54 +539,43 @@ void TremoloAudioProcessorEditor::paint (juce::Graphics& g)
     const int W = kBaseW, H = kBaseH;
 
     // ── Background ───────────────────────────────────────────────────────────
-    g.setColour (kBg);
-    g.fillAll();
+    PlateUi::drawBackground (g, getLocalBounds(), true);
 
-    // ── Header ───────────────────────────────────────────────────────────────
-    {
-        juce::ColourGradient hdr (kHeader.brighter (0.05f), 0.f, 0.f,
-                                   kHeader.darker   (0.25f), 0.f, 50.f, false);
-        g.setGradientFill (hdr);
-        g.fillRect (0, 0, W, 50);
-        g.setColour (kDivider.withAlpha (0.45f));
-        g.fillRect (0, 49, W, 1);
-    }
+    // ── Header bar ───────────────────────────────────────────────────────────
+    PlateUi::drawHeaderBar (g, getLocalBounds(), 50, true);
 
     // ── Zoom button ──────────────────────────────────────────────────────────
     {
         auto& zb = zoomButtonBounds;
-        g.setColour (kPanel.withAlpha (0.65f));
-        g.fillRoundedRectangle (zb.toFloat(), 5.f);
-        g.setColour (kDivider.withAlpha (0.55f));
-        g.drawRoundedRectangle (zb.toFloat().reduced (0.5f), 4.5f, 0.8f);
-        g.setFont (juce::Font (10.5f, juce::Font::bold));
-        g.setColour (kTextMain);
-        g.drawText (kZoomLabels[zoomIndex], zb, juce::Justification::centred, false);
+        PlateUi::drawFloatingControl (g, zb, kZoomLabels[zoomIndex], false);
     }
 
-    // ── Title "TREMOLO" ───────────────────────────────────────────────────────
+    // ── OMEGADARREN brand ────────────────────────────────────────────────────
+    PlateUi::drawBrandMark (g, { 14, 10, 140, 18 }, true);
+
+    // ── Title "TREMOLO" ──────────────────────────────────────────────────────
     {
+        g.setFont (juce::Font (20.f, juce::Font::bold));
+        const juce::String p1 = "TREM", p2 = "OLO";
         juce::Font tf (20.f, juce::Font::bold);
         g.setFont (tf);
-        const juce::String p1 = "TREM", p2 = "OLO";
         float w1 = tf.getStringWidthFloat (p1), w2 = tf.getStringWidthFloat (p2);
         float sx = (W - w1 - w2) * 0.5f;
-        g.setColour (kTextMain.withAlpha (0.72f));
-        g.drawText (p1, (int)sx,       18, (int)w1 + 4, 18, juce::Justification::centredLeft, false);
-        g.setColour (kAccent);
+        g.setColour (PlateUi::Theme::text().withAlpha (0.88f));
+        g.drawText (p1, (int)sx,        18, (int)w1 + 4, 18, juce::Justification::centredLeft, false);
+        juce::ColourGradient tGrad (PlateUi::Theme::accentBright(), sx + w1, 18.f,
+                                    PlateUi::Theme::accentDeep(),   sx + w1 + w2, 36.f, false);
+        g.setGradientFill (tGrad);
         g.drawText (p2, (int)(sx + w1), 18, (int)w2 + 4, 18, juce::Justification::centredLeft, false);
     }
 
-    // ── Mode label ───────────────────────────────────────────────────────────
+    // ── Mode label / Version ─────────────────────────────────────────────────
     g.setFont (juce::Font (9.5f));
-    g.setColour (kTextDim.withAlpha (0.55f));
+    g.setColour (PlateUi::Theme::textDim().withAlpha (0.55f));
     g.drawText ("MODE", W - 170, 14, 10, 16, juce::Justification::centredLeft, false);
-
-    // ── Version + Logo ───────────────────────────────────────────────────────
     g.setFont (juce::Font (8.5f));
-    g.setColour (kTextDim.withAlpha (0.50f));
+    g.setColour (PlateUi::Theme::textDim().withAlpha (0.45f));
     g.drawText ("v1.1", W - 52, 38, 40, 10, juce::Justification::centredRight, false);
-    drawLogoIcon (g, { (float)(W - 44), 6.f, 36.f, 36.f });
 
     // ── LFO column panels ─────────────────────────────────────────────────────
     const int   BS  = 278;

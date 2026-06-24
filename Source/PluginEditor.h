@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "Ui/PlateLookAndFeel.h"
 
 //==============================================================================
 class TremoloAudioProcessorEditor : public juce::AudioProcessorEditor,
