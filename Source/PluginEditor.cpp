@@ -590,7 +590,7 @@ void TremoloAudioProcessorEditor::paint (juce::Graphics& g)
     }
 
     // ── OMEGADARREN brand ────────────────────────────────────────────────────
-    PlateUi::drawBrandMark (g, { W - 156, 8, 130, 16 }, true);
+    PlateUi::drawBrandMark (g, { 492, 8, 130, 16 }, true);
 
     // ── Title "TREMOLO" ──────────────────────────────────────────────────────
     {
