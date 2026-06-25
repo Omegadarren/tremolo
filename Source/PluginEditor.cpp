@@ -1,5 +1,8 @@
 ﻿#include "PluginEditor.h"
 #include "Ui/PlateLookAndFeel.h"
+#if JUCE_WINDOWS
+ #include <windows.h>
+#endif
 
 constexpr float       TremoloAudioProcessorEditor::kZoomFactors[];
 constexpr const char* TremoloAudioProcessorEditor::kZoomLabels[];
@@ -432,9 +435,27 @@ void TremoloAudioProcessorEditor::visibilityChanged()
             juce::MessageManager::callAsync ([safeThis]()
             {
                 if (safeThis == nullptr) return;
+               #if JUCE_WINDOWS
+                if (auto* peer = safeThis->getPeer())
+                    if (auto hwnd = (HWND) peer->getNativeHandle())
+                        if (HWND root = ::GetAncestor (hwnd, GA_ROOT))
+                        {
+                            HMONITOR mon = ::MonitorFromWindow (root, MONITOR_DEFAULTTOPRIMARY);
+                            MONITORINFO mi = {};
+                            mi.cbSize = sizeof (mi);
+                            ::GetMonitorInfo (mon, &mi);
+                            RECT r = {};
+                            ::GetWindowRect (root, &r);
+                            int cx = (mi.rcWork.left + mi.rcWork.right  - (r.right  - r.left)) / 2;
+                            int cy = (mi.rcWork.top  + mi.rcWork.bottom - (r.bottom - r.top))  / 2;
+                            ::SetWindowPos (root, nullptr, cx, cy, 0, 0,
+                                            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                        }
+               #else
                 if (auto* peer = safeThis->getPeer())
                     if (auto* d = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
                         peer->setBounds (peer->getBounds().withCentre (d->userArea.getCentre()), false);
+               #endif
             });
         }
     }
