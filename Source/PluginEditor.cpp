@@ -428,9 +428,14 @@ void TremoloAudioProcessorEditor::visibilityChanged()
         if (! centred)
         {
             centred = true;
-            if (auto* tlw = getTopLevelComponent(); tlw != this)
-                if (auto* d = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
-                    tlw->setCentrePosition (d->userArea.getCentre());
+            juce::Component::SafePointer<juce::Component> safeThis (this);
+            juce::MessageManager::callAsync ([safeThis]()
+            {
+                if (safeThis == nullptr) return;
+                if (auto* peer = safeThis->getPeer())
+                    if (auto* d = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+                        peer->setBounds (peer->getBounds().withCentre (d->userArea.getCentre()), false);
+            });
         }
     }
 }
@@ -564,7 +569,7 @@ void TremoloAudioProcessorEditor::paint (juce::Graphics& g)
     }
 
     // ── OMEGADARREN brand ────────────────────────────────────────────────────
-    PlateUi::drawBrandMark (g, { 14, 10, 140, 18 }, true);
+    PlateUi::drawBrandMark (g, { 54, 9, 130, 17 }, true);
 
     // ── Title "TREMOLO" ──────────────────────────────────────────────────────
     {
